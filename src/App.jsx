@@ -1,7 +1,45 @@
 
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
 export default function App() {
+  const [video, setVideo] = useState(null);
+  const [videoName, setVideoName] = useState('');
+  const [duration, setDuration] = useState('00:00');
+  const [currentTime, setCurrentTime] = useState('00:00');
+  const videoRef = useRef(null);
+
+  function formatTime(seconds) {
+    if (!Number.isFinite(seconds)) return '00:00';
+
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+
+    return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  function importVideo(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    if (video) {
+      URL.revokeObjectURL(video);
+    }
+
+    const url = URL.createObjectURL(file);
+
+    setVideo(url);
+    setVideoName(file.name);
+    setDuration('00:00');
+    setCurrentTime('00:00');
+  }
+
+  useEffect(() => {
+    return () => {
+      if (video) URL.revokeObjectURL(video);
+    };
+  }, [video]);
+
   return (
     <div className="app">
       <header className="topbar">
@@ -24,21 +62,11 @@ export default function App() {
         <aside className="sidebar">
           <div className="sidebar-title">HERRAMIENTAS</div>
 
-          <button className="tool active">
-            <span>✂️</span> Edición
-          </button>
-          <button className="tool">
-            <span>🤖</span> Inteligencia artificial
-          </button>
-          <button className="tool">
-            <span>📝</span> Subtítulos
-          </button>
-          <button className="tool">
-            <span>🎨</span> Efectos y filtros
-          </button>
-          <button className="tool">
-            <span>🔊</span> Audio
-          </button>
+          <button className="tool active"><span>✂️</span> Edición</button>
+          <button className="tool"><span>🤖</span> Inteligencia artificial</button>
+          <button className="tool"><span>📝</span> Subtítulos</button>
+          <button className="tool"><span>🎨</span> Efectos y filtros</button>
+          <button className="tool"><span>🔊</span> Audio</button>
 
           <div className="sidebar-bottom">
             <div className="local-card">
@@ -62,23 +90,65 @@ export default function App() {
 
           <div className="preview-area">
             <div className="preview-screen">
-              <div className="preview-content">
-                <div className="play-icon">▶</div>
-                <h2>Tu próximo video comienza aquí</h2>
-                <p>Importa un archivo para comenzar a editar.</p>
-                <label className="import-button">
-                  <span>＋</span> Importar video
-                  <input type="file" accept="video/*" hidden />
-                </label>
-              </div>
-              <div className="preview-time">00:00 / 00:00</div>
+              {video ? (
+                <video
+                  ref={videoRef}
+                  className="video-preview"
+                  src={video}
+                  controls
+                  onLoadedMetadata={(event) =>
+                    setDuration(formatTime(event.currentTarget.duration))
+                  }
+                  onTimeUpdate={(event) =>
+                    setCurrentTime(formatTime(event.currentTarget.currentTime))
+                  }
+                />
+              ) : (
+                <div className="preview-content">
+                  <div className="play-icon">▶</div>
+                  <h2>Tu próximo video comienza aquí</h2>
+                  <p>Importa un archivo para comenzar a editar.</p>
+                  <label className="import-button">
+                    <span>＋</span> Importar video
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={importVideo}
+                      hidden
+                    />
+                  </label>
+                </div>
+              )}
+
+              {video && (
+                <div className="video-info">
+                  {currentTime} / {duration}
+                </div>
+              )}
             </div>
           </div>
+
+          {video && (
+            <div className="imported-file">
+              <span>🎬</span>
+              <span>{videoName}</span>
+              <button
+                onClick={() => {
+                  setVideo(null);
+                  setVideoName('');
+                  setDuration('00:00');
+                  setCurrentTime('00:00');
+                }}
+              >
+                Quitar video
+              </button>
+            </div>
+          )}
 
           <section className="timeline">
             <div className="timeline-header">
               <h2>Línea de tiempo</h2>
-              <span>00:00:00</span>
+              <span>{currentTime}</span>
             </div>
 
             <div className="timeline-ruler">
@@ -93,7 +163,9 @@ export default function App() {
             <div className="track">
               <span className="track-icon">🎬</span>
               <span>Video principal</span>
-              <div className="empty-track">Arrastra aquí tus videos</div>
+              <div className="empty-track">
+                {video ? videoName : 'Importa un video para comenzar'}
+              </div>
             </div>
 
             <div className="track">
