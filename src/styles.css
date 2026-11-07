@@ -410,16 +410,17 @@ button {
 
 .video-clip {
   position: relative;
-  flex: 0 0 auto;
-  height: 70px;
+  flex: 0 0 220px;
+  width: 220px;
+  min-width: 220px;
+  height: 76px;
   overflow: hidden;
   background: #25213a;
   border: 1px solid #514174;
-  border-radius: 5px;
+  border-radius: 7px;
   cursor: pointer;
   transition: border-color .2s, box-shadow .2s;
 }
-
 .video-clip:hover {
   border-color: #a987ff;
 }
