@@ -4,34 +4,60 @@ import React, { useRef, useState, useEffect } from 'react';
 export default function App() {
   const [video, setVideo] = useState(null);
   const [videoName, setVideoName] = useState('');
-  const [duration, setDuration] = useState('00:00');
-  const [currentTime, setCurrentTime] = useState('00:00');
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   function formatTime(seconds) {
     if (!Number.isFinite(seconds)) return '00:00';
-
-    const minutes = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-
-    return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    const min = Math.floor(seconds / 60);
+    const sec = Math.floor(seconds % 60);
+    return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   }
 
   function importVideo(event) {
     const file = event.target.files?.[0];
-
     if (!file) return;
 
-    if (video) {
-      URL.revokeObjectURL(video);
-    }
+    if (video) URL.revokeObjectURL(video);
 
     const url = URL.createObjectURL(file);
-
     setVideo(url);
     setVideoName(file.name);
-    setDuration('00:00');
-    setCurrentTime('00:00');
+    setDuration(0);
+    setCurrentTime(0);
+    setIsPlaying(false);
+    event.target.value = '';
+  }
+
+  function removeVideo() {
+    if (video) URL.revokeObjectURL(video);
+    setVideo(null);
+    setVideoName('');
+    setDuration(0);
+    setCurrentTime(0);
+    setIsPlaying(false);
+  }
+
+  function seekVideo(value) {
+    const time = Number(value);
+    if (videoRef.current) {
+      videoRef.current.currentTime = time;
+      setCurrentTime(time);
+    }
+  }
+
+  function togglePlayback() {
+    const player = videoRef.current;
+    if (!player) return;
+
+    if (player.paused) {
+      player.play().catch(() => {});
+    } else {
+      player.pause();
+    }
   }
 
   useEffect(() => {
@@ -61,7 +87,6 @@ export default function App() {
       <main className="workspace">
         <aside className="sidebar">
           <div className="sidebar-title">HERRAMIENTAS</div>
-
           <button className="tool active"><span>✂️</span> Edición</button>
           <button className="tool"><span>🤖</span> Inteligencia artificial</button>
           <button className="tool"><span>📝</span> Subtítulos</button>
@@ -96,12 +121,15 @@ export default function App() {
                   className="video-preview"
                   src={video}
                   controls
-                  onLoadedMetadata={(event) =>
-                    setDuration(formatTime(event.currentTarget.duration))
-                  }
-                  onTimeUpdate={(event) =>
-                    setCurrentTime(formatTime(event.currentTarget.currentTime))
-                  }
+                  onLoadedMetadata={(event) => {
+                    setDuration(event.currentTarget.duration);
+                  }}
+                  onTimeUpdate={(event) => {
+                    setCurrentTime(event.currentTarget.currentTime);
+                  }}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onEnded={() => setIsPlaying(false)}
                 />
               ) : (
                 <div className="preview-content">
@@ -111,6 +139,7 @@ export default function App() {
                   <label className="import-button">
                     <span>＋</span> Importar video
                     <input
+                      ref={fileInputRef}
                       type="file"
                       accept="video/*"
                       onChange={importVideo}
@@ -119,36 +148,32 @@ export default function App() {
                   </label>
                 </div>
               )}
-
-              {video && (
-                <div className="video-info">
-                  {currentTime} / {duration}
-                </div>
-              )}
             </div>
           </div>
 
           {video && (
-            <div className="imported-file">
-              <span>🎬</span>
-              <span>{videoName}</span>
-              <button
-                onClick={() => {
-                  setVideo(null);
-                  setVideoName('');
-                  setDuration('00:00');
-                  setCurrentTime('00:00');
-                }}
-              >
-                Quitar video
-              </button>
-            </div>
+            <>
+              <div className="imported-file">
+                <span>🎬</span>
+                <span>{videoName}</span>
+                <button onClick={removeVideo}>Quitar video</button>
+              </div>
+
+              <div className="playback-controls">
+                <button onClick={togglePlayback}>
+                  {isPlaying ? '❚❚ Pausar' : '▶ Reproducir'}
+                </button>
+                <span>{formatTime(currentTime)}</span>
+                <span>/</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+            </>
           )}
 
           <section className="timeline">
             <div className="timeline-header">
               <h2>Línea de tiempo</h2>
-              <span>{currentTime}</span>
+              <span>{formatTime(currentTime)}</span>
             </div>
 
             <div className="timeline-ruler">
@@ -179,6 +204,27 @@ export default function App() {
               <span>Texto</span>
               <div className="empty-track">Añade títulos y subtítulos</div>
             </div>
+
+            {video && (
+              <div className="timeline-seek">
+                <label htmlFor="timeline-range">
+                  DESPLAZAMIENTO POR EL VIDEO
+                </label>
+                <input
+                  id="timeline-range"
+                  type="range"
+                  min="0"
+                  max={duration || 1}
+                  step="0.01"
+                  value={Math.min(currentTime, duration || 1)}
+                  onChange={(event) => seekVideo(event.target.value)}
+                />
+                <div className="seek-times">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
+              </div>
+            )}
           </section>
         </section>
 
